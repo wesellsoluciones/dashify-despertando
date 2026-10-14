@@ -1,0 +1,151 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Despertando Dashify</title>
+<style>
+/* Layout: centered single card, animated ring + bar as focal point, dark industrial-dashboard palette matching Dashify's own look */
+:root{
+  --bg:#13151c;--bg2:#1a1d27;--card:#1d2029;--br:#2a2e3b;
+  --tx:#eef0f6;--mu:#8890a8;--acc:#6c5ce7;--acc2:#8c6cf0;--ok:#2fd48f;
+  --font-d:'Space Grotesk',system-ui,sans-serif;--font-b:'Inter',system-ui,sans-serif;--font-m:'JetBrains Mono',monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f3f5fa;--bg2:#eceefa;--card:#ffffff;--br:#e1e5f0;
+    --tx:#1c2333;--mu:#5c6480;--acc:#6c5ce7;--acc2:#8c6cf0;--ok:#1a8a53;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f3f5fa;--bg2:#eceefa;--card:#ffffff;--br:#e1e5f0;
+  --tx:#1c2333;--mu:#5c6480;--acc:#6c5ce7;--acc2:#8c6cf0;--ok:#1a8a53;
+  color-scheme: light;
+}
+:root{color-scheme: dark;}
+*{box-sizing:border-box}
+body{
+  background:radial-gradient(ellipse 1200px 800px at 50% -10%, var(--bg2), var(--bg));
+  color:var(--tx);min-height:100%;display:flex;align-items:center;justify-content:center;
+  padding-block:40px;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));
+  font-family:var(--font-b);
+}
+.card{
+  width:100%;max-width:440px;background:var(--card);border:1px solid var(--br);border-radius:18px;
+  padding:38px 30px 32px;box-shadow:0 2px 4px rgba(0,0,0,.08),0 20px 50px rgba(0,0,0,.25);
+  text-align:center;
+}
+.ring-wrap{position:relative;width:104px;height:104px;margin:0 auto 22px}
+.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:var(--br);stroke-width:5}
+.ring-prog{fill:none;stroke:var(--acc);stroke-width:5;stroke-linecap:round;
+  stroke-dasharray:289;stroke-dashoffset:289;transition:stroke-dashoffset 1s linear}
+.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.ring-icon svg{width:36px;height:36px}
+.bolt{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.88)}}
+h1{font-family:var(--font-d);font-size:21px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em}
+p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
+.countdown{
+  font-family:var(--font-m);font-variant-numeric:tabular-nums;font-size:38px;font-weight:600;
+  color:var(--acc2);margin-bottom:4px;letter-spacing:-.02em
+}
+.countdown-lbl{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;margin-bottom:24px}
+.status-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;color:var(--mu);margin-bottom:26px;min-height:18px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;animation:blink 1.2s ease-in-out infinite}
+.status-dot.ready{background:var(--ok);animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  background:linear-gradient(180deg,var(--acc2),var(--acc));color:#fff;border:none;border-radius:11px;
+  padding:13px 18px;font-size:14px;font-weight:700;font-family:var(--font-b);cursor:pointer;
+  box-shadow:0 1px 2px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.14);
+  transition:transform .15s ease,box-shadow .15s ease;text-decoration:none
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn:active{transform:translateY(0)}
+.btn[disabled]{opacity:.5;cursor:default;transform:none;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.foot{margin-top:18px;font-size:11.5px;color:var(--mu)}
+.foot b{color:var(--tx)}
+</style>
+
+<div class="card">
+  <div class="ring-wrap">
+    <svg viewBox="0 0 104 104">
+      <circle class="ring-track" cx="52" cy="52" r="46"></circle>
+      <circle class="ring-prog" id="ring" cx="52" cy="52" r="46"></circle>
+    </svg>
+    <div class="ring-icon" id="icon">
+      <svg class="bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--acc)">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+    </div>
+  </div>
+
+  <h1 id="title">Despertando Dashify</h1>
+  <p class="sub" id="sub">El panel estuvo sin uso y se puso a dormir para ahorrar recursos. Ya lo estamos levantando — no hace falta que hagas nada.</p>
+
+  <div class="countdown" id="countdown">60</div>
+  <div class="countdown-lbl">segundos aprox.</div>
+
+  <div class="status-row">
+    <div class="status-dot" id="dot"></div>
+    <span id="statusTxt">Despertando el servidor…</span>
+  </div>
+
+  <a class="btn" id="btn" href="https://dashify-eiw7.onrender.com/" target="_top">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    Entrar a Dashify ahora
+  </a>
+
+  <div class="foot">Si en un par de minutos sigue sin cargar, probá recargar esta página.</div>
+</div>
+
+<script>
+(function(){
+  var TOTAL = 55; // segundos, un poco por debajo de la ventana típica de 50-60s de Render
+  var TARGET = "https://dashify-eiw7.onrender.com/";
+  var ring = document.getElementById('ring');
+  var CIRC = 289;
+  var countdownEl = document.getElementById('countdown');
+  var dot = document.getElementById('dot');
+  var statusTxt = document.getElementById('statusTxt');
+  var title = document.getElementById('title');
+  var sub = document.getElementById('sub');
+  var btn = document.getElementById('btn');
+
+  var remaining = TOTAL;
+  var ready = false;
+
+  function tick(){
+    if (ready) return;
+    remaining = Math.max(0, remaining - 1);
+    countdownEl.textContent = remaining;
+    var pct = remaining / TOTAL;
+    ring.style.strokeDashoffset = (CIRC * pct).toFixed(1);
+    if (remaining <= 0){
+      markReady();
+      return;
+    }
+    setTimeout(tick, 1000);
+  }
+
+  function markReady(){
+    ready = true;
+    ring.style.strokeDashoffset = '0';
+    dot.classList.add('ready');
+    statusTxt.textContent = 'Listo, ya debería estar despierto';
+    title.textContent = 'Dashify ya está despierto';
+    sub.textContent = 'Podés entrar ahora. Si todavía ves un error, esperá 10-15 segundos más y volvé a intentar.';
+    countdownEl.textContent = '0';
+    try {
+      window.top.location.href = TARGET;
+    } catch(e) {}
+  }
+
+  // Intenta "despertar" el servidor apenas carga la página (best effort;
+  // no podemos leer la respuesta por CORS, pero el request igual dispara el arranque).
+  try {
+    fetch(TARGET, {mode:'no-cors', cache:'no-store'}).catch(function(){});
+  } catch(e) {}
+
+  setTimeout(tick, 1000);
+})();
+</script>
