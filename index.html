@@ -100,8 +100,11 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
 
 <script>
 (function(){
-  var TOTAL = 55; // segundos, un poco por debajo de la ventana típica de 50-60s de Render
+  var TOTAL = 55; // techo visual de la cuenta regresiva (estimado, no bloqueante)
   var TARGET = "https://dashify-eiw7.onrender.com/";
+  var HEALTH = "https://dashify-eiw7.onrender.com/health";
+  var POLL_MS = 1500;
+
   var ring = document.getElementById('ring');
   var CIRC = 289;
   var countdownEl = document.getElementById('countdown');
@@ -109,10 +112,43 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
   var statusTxt = document.getElementById('statusTxt');
   var title = document.getElementById('title');
   var sub = document.getElementById('sub');
-  var btn = document.getElementById('btn');
 
   var remaining = TOTAL;
   var ready = false;
+
+  function goIn(){
+    if (ready) return;
+    ready = true;
+    try { window.top.location.href = TARGET; } catch(e) { window.location.href = TARGET; }
+  }
+
+  function markReadyUI(){
+    ring.style.strokeDashoffset = '0';
+    dot.classList.add('ready');
+    statusTxt.textContent = 'Listo, entrando…';
+    title.textContent = 'Dashify ya está despierto';
+    sub.textContent = 'Te estamos llevando adentro automáticamente.';
+    countdownEl.textContent = '0';
+  }
+
+  // Chequea de verdad, cada POLL_MS, si Dashify ya responde. Apenas
+  // contesta ok, entra directo sin esperar la cuenta regresiva completa
+  // — así, si el panel ya estaba despierto, pasa casi al instante.
+  function poll(){
+    if (ready) return;
+    fetch(HEALTH, {cache:'no-store'})
+      .then(function(r){
+        if (r.ok){
+          markReadyUI();
+          setTimeout(goIn, 350); // mini pausa para que se vea el estado "listo"
+        } else {
+          setTimeout(poll, POLL_MS);
+        }
+      })
+      .catch(function(){
+        setTimeout(poll, POLL_MS);
+      });
+  }
 
   function tick(){
     if (ready) return;
@@ -121,31 +157,15 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
     var pct = remaining / TOTAL;
     ring.style.strokeDashoffset = (CIRC * pct).toFixed(1);
     if (remaining <= 0){
-      markReady();
+      // Se acabó el estimado visual pero seguimos poll-eando en segundo
+      // plano (puede tardar un poco más en casos raros); solo avisamos.
+      statusTxt.textContent = 'Sigue despertando, un toque más…';
       return;
     }
     setTimeout(tick, 1000);
   }
 
-  function markReady(){
-    ready = true;
-    ring.style.strokeDashoffset = '0';
-    dot.classList.add('ready');
-    statusTxt.textContent = 'Listo, ya debería estar despierto';
-    title.textContent = 'Dashify ya está despierto';
-    sub.textContent = 'Podés entrar ahora. Si todavía ves un error, esperá 10-15 segundos más y volvé a intentar.';
-    countdownEl.textContent = '0';
-    try {
-      window.top.location.href = TARGET;
-    } catch(e) {}
-  }
-
-  // Intenta "despertar" el servidor apenas carga la página (best effort;
-  // no podemos leer la respuesta por CORS, pero el request igual dispara el arranque).
-  try {
-    fetch(TARGET, {mode:'no-cors', cache:'no-store'}).catch(function(){});
-  } catch(e) {}
-
+  poll();          // empieza a chequear YA, de entrada
   setTimeout(tick, 1000);
 })();
 </script>
