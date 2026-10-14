@@ -37,6 +37,8 @@ body{
 .ring-track{fill:none;stroke:var(--br);stroke-width:5}
 .ring-prog{fill:none;stroke:var(--acc);stroke-width:5;stroke-linecap:round;
   stroke-dasharray:289;stroke-dashoffset:289;transition:stroke-dashoffset 1s linear}
+.ring-wrap.spin .ring-prog{stroke-dasharray:72 217;stroke-dashoffset:0;animation:spin 1s linear infinite;transition:none;transform-box:fill-box;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
 .ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .ring-icon svg{width:36px;height:36px}
 .bolt{animation:pulse 1.6s ease-in-out infinite}
@@ -67,7 +69,7 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
 </style>
 
 <div class="card">
-  <div class="ring-wrap">
+  <div class="ring-wrap spin" id="ringWrap">
     <svg viewBox="0 0 104 104">
       <circle class="ring-track" cx="52" cy="52" r="46"></circle>
       <circle class="ring-prog" id="ring" cx="52" cy="52" r="46"></circle>
@@ -79,15 +81,15 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
     </div>
   </div>
 
-  <h1 id="title">Despertando Dashify</h1>
-  <p class="sub" id="sub">El panel estuvo sin uso y se puso a dormir para ahorrar recursos. Ya lo estamos levantando — no hace falta que hagas nada.</p>
+  <h1 id="title">Entrando a Dashify</h1>
+  <p class="sub" id="sub">Un segundo, estamos verificando el estado del panel…</p>
 
-  <div class="countdown" id="countdown">60</div>
-  <div class="countdown-lbl">segundos aprox.</div>
+  <div class="countdown" id="countdown" hidden>60</div>
+  <div class="countdown-lbl" id="countdownLbl" hidden>segundos aprox.</div>
 
   <div class="status-row">
     <div class="status-dot" id="dot"></div>
-    <span id="statusTxt">Despertando el servidor…</span>
+    <span id="statusTxt">Verificando…</span>
   </div>
 
   <a class="btn" id="btn" href="https://dashify-eiw7.onrender.com/" target="_top">
@@ -100,14 +102,17 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
 
 <script>
 (function(){
-  var TOTAL = 55; // techo visual de la cuenta regresiva (estimado, no bloqueante)
+  var TOTAL = 55;              // techo visual de la cuenta regresiva (estimado, no bloqueante)
   var TARGET = "https://dashify-eiw7.onrender.com/";
   var HEALTH = "https://dashify-eiw7.onrender.com/health";
   var POLL_MS = 1500;
+  var GRACE_MS = 2500;         // mientras dure esto, no mostramos el mensaje de "se durmió"
 
+  var ringWrap = document.getElementById('ringWrap');
   var ring = document.getElementById('ring');
   var CIRC = 289;
   var countdownEl = document.getElementById('countdown');
+  var countdownLbl = document.getElementById('countdownLbl');
   var dot = document.getElementById('dot');
   var statusTxt = document.getElementById('statusTxt');
   var title = document.getElementById('title');
@@ -115,6 +120,8 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
 
   var remaining = TOTAL;
   var ready = false;
+  var sleepingShown = false;
+  var tickStarted = false;
 
   function goIn(){
     if (ready) return;
@@ -123,24 +130,40 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
   }
 
   function markReadyUI(){
+    ringWrap.classList.remove('spin');
     ring.style.strokeDashoffset = '0';
     dot.classList.add('ready');
     statusTxt.textContent = 'Listo, entrando…';
     title.textContent = 'Dashify ya está despierto';
     sub.textContent = 'Te estamos llevando adentro automáticamente.';
-    countdownEl.textContent = '0';
+    if (!countdownEl.hidden){ countdownEl.textContent = '0'; }
+  }
+
+  // Recién a partir de acá mostramos el mensaje completo de "se puso a
+  // dormir" + cuenta regresiva — si el primer chequeo responde rápido
+  // (panel ya despierto), esto nunca llega a verse.
+  function showSleepingUI(){
+    if (sleepingShown || ready) return;
+    sleepingShown = true;
+    ringWrap.classList.remove('spin');
+    title.textContent = 'Despertando Dashify';
+    sub.textContent = 'El panel estuvo sin uso y se puso a dormir para ahorrar recursos. Ya lo estamos levantando — no hace falta que hagas nada.';
+    countdownEl.hidden = false;
+    countdownLbl.hidden = false;
+    statusTxt.textContent = 'Despertando el servidor…';
+    if (!tickStarted){ tickStarted = true; setTimeout(tick, 1000); }
   }
 
   // Chequea de verdad, cada POLL_MS, si Dashify ya responde. Apenas
-  // contesta ok, entra directo sin esperar la cuenta regresiva completa
-  // — así, si el panel ya estaba despierto, pasa casi al instante.
+  // contesta ok, entra directo — si el panel ya estaba despierto, pasa
+  // casi al instante y nunca llega a mostrar el mensaje de "dormido".
   function poll(){
     if (ready) return;
     fetch(HEALTH, {cache:'no-store'})
       .then(function(r){
         if (r.ok){
           markReadyUI();
-          setTimeout(goIn, 350); // mini pausa para que se vea el estado "listo"
+          setTimeout(goIn, 300); // mini pausa para que se vea el estado "listo"
         } else {
           setTimeout(poll, POLL_MS);
         }
@@ -165,7 +188,7 @@ p.sub{color:var(--mu);font-size:14px;line-height:1.5;margin:0 0 26px}
     setTimeout(tick, 1000);
   }
 
-  poll();          // empieza a chequear YA, de entrada
-  setTimeout(tick, 1000);
+  poll();                          // empieza a chequear YA, de entrada, en silencio
+  setTimeout(showSleepingUI, GRACE_MS); // si para entonces no respondió, recién ahí avisamos
 })();
 </script>
